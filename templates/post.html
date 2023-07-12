@@ -39,7 +39,7 @@
             {{ ckeditor.config(name='body') }}
             {{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
               <ul class="commentList">
-                {% for comment in comments %}
+                {% for comment in post.comments %}
                 <li>
                   <div class="commenterImage">
                     <img src="{{ comment.comment_author.email | gravatar }}"/>

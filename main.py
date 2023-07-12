@@ -29,7 +29,7 @@ def admin_only_function(function):
     @wraps(function)
     def wrapper_function(*args, **kwargs):
         if current_user.id == 1:
-            return function()
+            return function(*args, **kwargs)
         else:
             return abort(403)
     #wrapper_function.__name__ = function.__name__
@@ -123,8 +123,7 @@ def logout():
 @login_required
 def show_post(post_id):
     comment_form = CommentForm()
-    requested_post = BlogPost.query.get(post_id)
-    comments = Comment.query.all()
+    requested_post = db.get_or_404(BlogPost, post_id)
     if comment_form.validate_on_submit():
         if current_user.is_authenticated:
             new_comment = Comment(
@@ -134,13 +133,13 @@ def show_post(post_id):
             )
             db.session.add(new_comment)
             db.session.commit()
-            return redirect(url_for("show_post", post_id=post_id))
+            return redirect(url_for("show_post", post=requested_post))
         else:
             flash("You need to login to leave a comment")
             return redirect(url_for("login"))
         
         
-    return render_template("post.html", post=requested_post,logged_in=current_user.is_authenticated,form=comment_form,comments=comments)
+    return render_template("post.html", post=requested_post,logged_in=current_user.is_authenticated,form=comment_form)
 
 
 @app.route("/about")
@@ -173,38 +172,30 @@ def add_new_post():
     return render_template("make-post.html", form=form,logged_in=current_user.is_authenticated)
 
 
-@app.route("/edit-post/<int:post_id>")
+@app.route("/edit-post/<post_id>")
 @login_required
 @admin_only_function
 def edit_post(post_id):
-    post = BlogPost.query.get(post_id)
-    edit_form = CreatePostForm(
-        title=post.title,
-        subtitle=post.subtitle,
-        img_url=post.img_url,
-        author=post.author,
-        body=post.body
-    )
+    post = db.get_or_404(BlogPost, post_id)
+    edit_form = CreatePostForm(title=post.title, subtitle=post.subtitle, img_url=post.img_url, author=post.author, body=post.body)
     if edit_form.validate_on_submit():
         post.title = edit_form.title.data
         post.subtitle = edit_form.subtitle.data
-        post.img_url = edit_form.img_url.data
         post.author = edit_form.author.data
+        post.img_url = edit_form.img_url.data
         post.body = edit_form.body.data
         db.session.commit()
-        return redirect(url_for("show_post", post_id=post.id))
-
-    return render_template("make-post.html", form=edit_form,logged_in=current_user.is_authenticated)
+        return redirect(url_for('show_post', post=post.id))
+    return render_template('make-post.html',form=edit_form, is_edit=True,logged_in=current_user.is_authenticated)
 
 
 @app.route("/delete/<int:post_id>")
-@login_required
 @admin_only_function
 def delete_post(post_id):
     post_to_delete = BlogPost.query.get(post_id)
     db.session.delete(post_to_delete)
     db.session.commit()
-    return redirect(url_for('get_all_posts'),logged_in=current_user.is_authenticated)
+    return redirect(url_for('get_all_posts'))
 
 @login_manager.user_loader
 def load_user(user_id):
